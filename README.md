@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project performs comprehensive analysis of fare brands across US domestic markets to identify Basic Economy fare structures for each airline. The enhanced v2.0 pipeline implements significant improvements including market-specific price ranking, comprehensive advance purchase analysis, and enhanced Basic Economy detection algorithms.
+This project performs comprehensive analysis of fare brands across US domestic markets to identify Basic Economy fare structures for each airline. The enhanced v2.0 pipeline implements significant improvements over the original version, including market-specific price ranking, comprehensive advance purchase analysis, and enhanced Basic Economy detection algorithms.
 
 ## Key Features
 
@@ -15,11 +15,13 @@ This project performs comprehensive analysis of fare brands across US domestic m
 
 ## Files
 
-### Core Analysis Script
+### Core Analysis Scripts
 - `enhanced_fare_brand_analysis.py` - **Main enhanced pipeline** with all v2.0 improvements
+- `pipeline_analysis_and_recommendations.py` - Analysis of pipeline gaps and recommendations
 
 ### Supporting Files
 - `rs_access_v1.py` - Redshift connection utility
+- `fare_brand_analysis_enhanced.py` - Original pipeline (for comparison)
 - `.env.sh` - Environment variables for AWS credentials (not tracked in git)
 - `.gitignore` - Excludes sensitive files and temporary outputs
 
