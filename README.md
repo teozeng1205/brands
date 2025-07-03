@@ -1,5 +1,148 @@
 # Fare Brand Analysis and Basic Economy Detection
 
+This repository contains analysis scripts for identifying fare brands and detecting Basic Economy fares in US domestic markets using the 3Victors Common Output dataset.
+
+## Project Structure
+
+```
+brands/
+├── main_analysis.py              # Primary analysis script (run this)
+├── legacy_analysis.py            # Previous version (for reference)
+├── analysis_summary.py           # Summary generation script
+├── rs_access_v1.py              # Redshift connection utilities
+├── README.md                    # This file
+├── .gitignore                   # Git ignore rules
+└── .env.sh                      # Environment variables (not tracked)
+```
+
+## Quick Start
+
+1. **Setup Environment**
+   ```bash
+   source .env.sh
+   ```
+
+2. **Run Main Analysis**
+   ```bash
+   python main_analysis.py
+   ```
+
+## Main Analysis Script (`main_analysis.py`)
+
+The primary script that performs comprehensive fare brand analysis and Basic Economy detection.
+
+### Features
+- **US Domestic Filtering**: Uses `metadata.airportlocation_extra` for accurate US airport identification
+- **Brand Identification**: Identifies all fare brands per airline and market
+- **Advance Purchase Analysis**: Analyzes brand availability across 7, 14, and 21-day windows
+- **Basic Economy Detection**: Multi-factor scoring system with confidence levels
+- **Visualizations**: Production-ready charts and summary statistics
+- **Deliverable Tables**: CSV output for mapping and reporting
+
+### Outputs
+- `basic_economy_analysis_YYYYMMDD_HHMMSS.csv` - Main deliverable table
+- `fare_brand_visualizations_YYYYMMDD_HHMMSS.png` - Summary charts
+
+### Methodology
+
+#### Basic Economy Detection Logic
+The script uses a weighted scoring system (0-100 points) based on:
+
+1. **Price Rank (40 points)**
+   - 1st cheapest: 40 points
+   - 2nd cheapest: 30 points  
+   - 3rd cheapest: 20 points
+
+2. **Refundability (20 points)**
+   - <10% refundable: 20 points
+   - <30% refundable: 10 points
+
+3. **Change Fees (20 points)**
+   - >$100: 20 points
+   - >$50: 10 points
+
+4. **Brand Name Analysis (20 points)**
+   - Basic keywords (+15): 'basic', 'economy', 'main', 'standard', 'saver', 'light', 'essential'
+   - Premium keywords (-15): 'first', 'business', 'premium', 'plus', 'comfort', 'extra', 'flex'
+
+#### Confidence Levels
+- **High**: Score ≥ 70 (most reliable)
+- **Medium**: Score 50-69
+- **Low**: Score < 50
+
+## Data Requirements
+
+- Redshift access with `common_output.common_output_format` table
+- `metadata.airportlocation_extra` table for US airport filtering
+- AWS credentials configured via `.env.sh`
+
+## Recent Results
+
+Latest analysis (2025-07-03):
+- **75,000 records** from US domestic markets
+- **10 airlines** analyzed (AA, B6, UA, AS, DL, HA, F9, WN, NK, PD)
+- **615 markets** covered
+- **64 unique fare families** identified
+- **818 high-confidence** Basic Economy identifications
+- **7 medium-confidence** identifications
+
+## File Descriptions
+
+### `main_analysis.py`
+Primary analysis script with clean, modular code structure:
+- Data extraction and cleaning
+- Exploratory data analysis
+- Advance purchase pattern analysis
+- Brand identification by airline
+- Basic Economy detection with scoring
+- Visualization generation
+- Deliverable table creation
+
+### `legacy_analysis.py`
+Previous version of the analysis script (kept for reference).
+
+### `analysis_summary.py`
+Script for generating summary statistics and insights from analysis results.
+
+### `rs_access_v1.py`
+Redshift connection utilities and AWS credential management.
+
+## Usage Examples
+
+```bash
+# Run complete analysis
+python main_analysis.py
+
+# Run with specific environment
+source .env.sh && python main_analysis.py
+```
+
+## Output Format
+
+The main deliverable CSV contains:
+- `Airline`: Carrier code
+- `Market`: Origin-destination pair
+- `All_Detected_Brands`: Comma-separated list of all brands in the market
+- `Identified_Basic_Economy_Brand`: Detected Basic Economy brand
+- `Confidence_Level`: High/Medium/Low confidence
+- `BE_Score`: Basic Economy score (0-100)
+
+## Contributing
+
+1. Follow the modular structure in `main_analysis.py`
+2. Add clear section headers and documentation
+3. Test with `source .env.sh && python main_analysis.py`
+4. Commit with descriptive messages
+
+## Dependencies
+
+- pandas
+- numpy
+- matplotlib
+- seaborn
+- rs_access_v1 (custom Redshift utilities)
+- AWS credentials (via .env.sh)
+
 ## Overview
 
 This project performs comprehensive analysis of fare brands across US domestic markets to identify Basic Economy fare structures for each airline. The analysis helps understand brand structures and determine which fares are likely to represent Basic Economy—typically the lowest-cost and most restrictive options.
