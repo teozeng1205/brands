@@ -10,11 +10,12 @@ Key Features:
 - Fetches US domestic flight data from Redshift using metadata.airportlocation_extra
 - Analyzes fare brands by airline and market combination
 - Identifies Basic Economy fares using multi-factor scoring
-- Creates visualizations for brand distribution and patterns
-- Generates deliverable CSV with confidence levels
+- Creates comprehensive visualizations and deliverable reports
+- Includes advance purchase pattern analysis (7, 14, 21 days)
 
 Author: Data Science Team
 Date: 2025-07-03
+Version: 2.0
 """
 
 import pandas as pd
@@ -25,21 +26,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import rs_access_v1 as rs
 
+# Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
 
-# Set up plotting style for better visualizations
+# Configure plotting style for professional output
 plt.style.use('default')
 sns.set_palette("husl")
 plt.rcParams['figure.figsize'] = (12, 8)
-
-print("=" * 80)
-print("ENHANCED FARE BRAND ANALYSIS AND BASIC ECONOMY DETECTION")
-print("=" * 80)
-
-# Initialize Redshift connection
-acct_no, acct_name = rs.RedshiftAccess.get_rs_account_info()
-print(f"Account Number: {acct_no}")
-print(f"Account Name: {acct_name}")
+plt.rcParams['font.size'] = 10
 
 def get_us_domestic_data():
     """
@@ -48,8 +42,9 @@ def get_us_domestic_data():
     Returns:
         pd.DataFrame: Raw flight data for US domestic markets
     """
-    print("\n📊 Fetching US domestic flight data from Redshift...")
+    print("📊 Fetching US domestic flight data from Redshift...")
     
+    # Initialize Redshift connection
     rs.assign_connection("ds")
     
     # Query for US domestic markets using the airport location table
@@ -112,7 +107,7 @@ def clean_and_prepare_data(df):
     Returns:
         pd.DataFrame: Cleaned and prepared data with calculated fields
     """
-    print("\n🧹 Cleaning and preparing data...")
+    print("🧹 Cleaning and preparing data...")
     
     if df.empty:
         print("❌ No data to clean")
@@ -158,6 +153,7 @@ def clean_and_prepare_data(df):
     
     # Define advance purchase buckets as specified in requirements
     def categorize_advance_purchase(days):
+        """Categorize advance purchase days into buckets"""
         if days <= 7:
             return '0-7 days'
         elif days <= 14:
@@ -181,19 +177,77 @@ def clean_and_prepare_data(df):
     
     return df
 
-def analyze_advance_purchase_patterns(df):
+def perform_exploratory_data_analysis(df):
     """
-    Analyze brand availability across different advance purchase windows (7, 14, 21 days)
+    Perform comprehensive exploratory data analysis
     
     Args:
         df (pd.DataFrame): Cleaned flight data
         
     Returns:
-        pd.DataFrame: Analysis of brand availability by advance purchase window
+        pd.DataFrame: Same dataframe with analysis printed
     """
-    print("\n" + "="*50)
+    print("\n" + "="*60)
+    print("EXPLORATORY DATA ANALYSIS")
+    print("="*60)
+    
+    if df.empty:
+        print("❌ No data for EDA")
+        return df
+    
+    # Basic statistics
+    print(f"\n📈 Dataset Overview:")
+    print(f"Total records: {len(df):,}")
+    print(f"Unique airlines: {df['carrier'].nunique()}")
+    print(f"Unique markets: {df['market'].nunique()}")
+    print(f"Unique fare families: {df['primary_fare_family'].nunique()}")
+    
+    # Airlines distribution
+    print(f"\n✈️ Airlines in dataset:")
+    airline_counts = df['carrier'].value_counts()
+    for airline, count in airline_counts.head(10).items():
+        print(f"  {airline}: {count:,} records")
+    
+    # Market distribution
+    print(f"\n🗺️ Top markets:")
+    market_counts = df['market'].value_counts()
+    for market, count in market_counts.head(10).items():
+        print(f"  {market}: {count:,} records")
+    
+    # Fare family distribution
+    print(f"\n🏷️ Fare families overview:")
+    ff_counts = df['primary_fare_family'].value_counts()
+    for ff, count in ff_counts.head(15).items():
+        print(f"  {ff}: {count:,} records")
+    
+    # Price statistics
+    print(f"\n💰 Price statistics:")
+    print(f"  Mean price: ${df['price_inc'].mean():.2f}")
+    print(f"  Median price: ${df['price_inc'].median():.2f}")
+    print(f"  Price range: ${df['price_inc'].min():.2f} - ${df['price_inc'].max():.2f}")
+    
+    # Advance purchase statistics
+    print(f"\n📅 Advance purchase statistics:")
+    ap_counts = df['advance_purchase_bucket'].value_counts()
+    for bucket, count in ap_counts.items():
+        pct = (count / len(df)) * 100
+        print(f"  {bucket}: {count:,} records ({pct:.1f}%)")
+    
+    return df
+
+def analyze_advance_purchase_patterns(df):
+    """
+    Analyze brand availability across different advance purchase windows
+    
+    Args:
+        df (pd.DataFrame): Cleaned flight data
+        
+    Returns:
+        pd.DataFrame: Analysis results by advance purchase window
+    """
+    print("\n" + "="*60)
     print("ADVANCE PURCHASE PATTERN ANALYSIS")
-    print("="*50)
+    print("="*60)
     
     if df.empty:
         print("❌ No data for advance purchase analysis")
@@ -225,6 +279,171 @@ def analyze_advance_purchase_patterns(df):
     
     return ap_analysis
 
+def analyze_fare_brands_by_airline(df):
+    """
+    Analyze fare brands for each airline and market combination
+    
+    Args:
+        df (pd.DataFrame): Cleaned flight data
+        
+    Returns:
+        pd.DataFrame: Brand analysis by airline and market
+    """
+    print("\n" + "="*60)
+    print("FARE BRAND ANALYSIS BY AIRLINE")
+    print("="*60)
+    
+    if df.empty:
+        print("❌ No data for brand analysis")
+        return pd.DataFrame()
+    
+    # Group by airline and market to find all brands
+    brand_analysis = df.groupby(['carrier', 'market']).agg({
+        'primary_fare_family': lambda x: sorted(list(set(x))),
+        'price_inc': ['count', 'mean', 'min', 'max'],
+        'days_to_departure': ['mean', 'min', 'max']
+    }).reset_index()
+    
+    # Flatten column names
+    brand_analysis.columns = ['carrier', 'market', 'all_brands', 'record_count', 
+                             'avg_price', 'min_price', 'max_price', 
+                             'avg_days_out', 'min_days_out', 'max_days_out']
+    
+    brand_analysis['num_brands'] = brand_analysis['all_brands'].apply(len)
+    brand_analysis['brand_count_str'] = brand_analysis['all_brands'].apply(lambda x: ', '.join(x))
+    
+    print(f"\n📊 Brand diversity by airline:")
+    airline_brand_summary = brand_analysis.groupby('carrier').agg({
+        'num_brands': ['mean', 'min', 'max'],
+        'market': 'count'
+    }).round(2)
+    
+    airline_brand_summary.columns = ['avg_brands_per_market', 'min_brands', 'max_brands', 'markets_served']
+    print(airline_brand_summary.sort_values('avg_brands_per_market', ascending=False))
+    
+    return brand_analysis
+
+def identify_basic_economy_candidates(df, brand_analysis):
+    """
+    Identify Basic Economy candidates using multiple criteria
+    
+    Args:
+        df (pd.DataFrame): Cleaned flight data
+        brand_analysis (pd.DataFrame): Brand analysis results
+        
+    Returns:
+        tuple: (basic_economy_candidates, brand_metrics)
+    """
+    print("\n" + "="*60)
+    print("BASIC ECONOMY IDENTIFICATION")
+    print("="*60)
+    
+    if df.empty or brand_analysis.empty:
+        print("❌ No data for Basic Economy identification")
+        return pd.DataFrame(), pd.DataFrame()
+    
+    # Create comprehensive analysis for each airline-market-brand combination
+    brand_metrics = df.groupby(['carrier', 'market', 'primary_fare_family']).agg({
+        'price_inc': ['count', 'mean', 'min', 'max', 'std'],
+        'refundable': 'mean',
+        'change_fee': ['mean', 'max'],
+        'days_to_departure': 'mean',
+        'outbound_booking_class': lambda x: len(set(x))  # number of booking classes
+    }).reset_index()
+    
+    # Flatten column names
+    brand_metrics.columns = ['carrier', 'market', 'fare_family', 'record_count', 
+                           'avg_price', 'min_price', 'max_price', 'price_std',
+                           'refundable_pct', 'avg_change_fee', 'max_change_fee',
+                           'avg_days_out', 'booking_class_variety']
+    
+    # Calculate price rank within each airline-market combination
+    brand_metrics['price_rank'] = brand_metrics.groupby(['carrier', 'market'])['avg_price'].rank(method='min')
+    
+    # Basic Economy scoring criteria
+    def calculate_basic_economy_score(row):
+        """
+        Calculate Basic Economy score based on multiple factors:
+        - Price rank (40% weight)
+        - Refundability (20% weight) 
+        - Change fees (20% weight)
+        - Brand name analysis (20% weight)
+        """
+        score = 0
+        
+        # Price criteria (40% weight)
+        if row['price_rank'] == 1:  # Cheapest average price
+            score += 40
+        elif row['price_rank'] == 2:
+            score += 30
+        elif row['price_rank'] <= 3:
+            score += 20
+        
+        # Refundability (20% weight)
+        if pd.notna(row['refundable_pct']):
+            if row['refundable_pct'] < 0.1:  # Less than 10% refundable
+                score += 20
+            elif row['refundable_pct'] < 0.3:
+                score += 10
+        
+        # Change fee criteria (20% weight)
+        if pd.notna(row['avg_change_fee']):
+            if row['avg_change_fee'] > 100:  # High change fees
+                score += 20
+            elif row['avg_change_fee'] > 50:
+                score += 10
+        
+        # Brand name analysis (20% weight)
+        fare_family_lower = str(row['fare_family']).lower()
+        basic_keywords = ['basic', 'economy', 'main', 'standard', 'saver', 'light', 'essential']
+        premium_keywords = ['first', 'business', 'premium', 'plus', 'comfort', 'extra', 'flex']
+        
+        if any(keyword in fare_family_lower for keyword in basic_keywords):
+            score += 15
+        if any(keyword in fare_family_lower for keyword in premium_keywords):
+            score -= 15
+        
+        return score
+    
+    # Apply scoring function
+    brand_metrics['basic_economy_score'] = brand_metrics.apply(calculate_basic_economy_score, axis=1)
+    
+    # Identify Basic Economy for each airline-market combination
+    basic_economy_candidates = brand_metrics.loc[
+        brand_metrics.groupby(['carrier', 'market'])['basic_economy_score'].idxmax()
+    ].copy()
+    
+    # Add confidence level
+    def assign_confidence(score):
+        """Assign confidence level based on score"""
+        if score >= 70:
+            return 'High'
+        elif score >= 50:
+            return 'Medium'
+        else:
+            return 'Low'
+    
+    basic_economy_candidates['confidence'] = basic_economy_candidates['basic_economy_score'].apply(assign_confidence)
+    
+    print(f"\n🎯 Basic Economy Identification Results:")
+    print(f"Total airline-market combinations analyzed: {len(basic_economy_candidates):,}")
+    
+    confidence_dist = basic_economy_candidates['confidence'].value_counts()
+    for conf, count in confidence_dist.items():
+        print(f"  {conf} confidence: {count:,} combinations")
+    
+    # Show examples by airline
+    print(f"\n✈️ Basic Economy candidates by airline:")
+    for carrier in basic_economy_candidates['carrier'].unique()[:8]:
+        carrier_data = basic_economy_candidates[basic_economy_candidates['carrier'] == carrier]
+        high_conf = carrier_data[carrier_data['confidence'] == 'High']
+        if len(high_conf) > 0:
+            most_common_brand = high_conf['fare_family'].mode()
+            if len(most_common_brand) > 0:
+                print(f"  {carrier}: {most_common_brand[0]} (in {len(high_conf)} markets)")
+    
+    return basic_economy_candidates, brand_metrics
+
 def create_visualizations(df, ap_analysis, basic_economy_candidates):
     """
     Create comprehensive visualizations for the analysis
@@ -234,9 +453,9 @@ def create_visualizations(df, ap_analysis, basic_economy_candidates):
         ap_analysis (pd.DataFrame): Advance purchase analysis
         basic_economy_candidates (pd.DataFrame): Basic Economy identification results
     """
-    print("\n" + "="*50)
+    print("\n" + "="*60)
     print("CREATING VISUALIZATIONS")
-    print("="*50)
+    print("="*60)
     
     if df.empty:
         print("❌ No data for visualizations")
@@ -244,7 +463,8 @@ def create_visualizations(df, ap_analysis, basic_economy_candidates):
     
     # Create figure with subplots
     fig, axes = plt.subplots(2, 3, figsize=(20, 12))
-    fig.suptitle('Fare Brand Analysis and Basic Economy Detection - US Domestic Markets', fontsize=16, fontweight='bold')
+    fig.suptitle('Fare Brand Analysis and Basic Economy Detection - US Domestic Markets', 
+                 fontsize=16, fontweight='bold')
     
     # 1. Airline distribution
     airline_counts = df['carrier'].value_counts().head(10)
@@ -321,9 +541,9 @@ def create_visualizations(df, ap_analysis, basic_economy_candidates):
     print(f"💾 Saved visualizations to: {viz_filename}")
     
     # Create additional summary statistics visualization
-    create_summary_stats_viz(df, ap_analysis, basic_economy_candidates)
+    create_summary_statistics_visualization(df, ap_analysis, basic_economy_candidates)
 
-def create_summary_stats_viz(df, ap_analysis, basic_economy_candidates):
+def create_summary_statistics_visualization(df, ap_analysis, basic_economy_candidates):
     """
     Create additional summary statistics visualization
     
@@ -380,235 +600,20 @@ def create_summary_stats_viz(df, ap_analysis, basic_economy_candidates):
     plt.savefig(summary_viz_filename, dpi=300, bbox_inches='tight')
     print(f"💾 Saved summary statistics to: {summary_viz_filename}")
 
-def exploratory_data_analysis(df):
-    """
-    Perform comprehensive EDA
-    
-    Args:
-        df (pd.DataFrame): Cleaned flight data
-        
-    Returns:
-        pd.DataFrame: Same dataframe with EDA output printed
-    """
-    print("\n" + "="*50)
-    print("EXPLORATORY DATA ANALYSIS")
-    print("="*50)
-    
-    if df.empty:
-        print("❌ No data for EDA")
-        return df
-    
-    # Basic statistics
-    print(f"\n📈 Dataset Overview:")
-    print(f"Total records: {len(df):,}")
-    print(f"Unique airlines: {df['carrier'].nunique()}")
-    print(f"Unique markets: {df['market'].nunique()}")
-    print(f"Unique fare families: {df['primary_fare_family'].nunique()}")
-    
-    # Airlines distribution
-    print(f"\n✈️ Airlines in dataset:")
-    airline_counts = df['carrier'].value_counts()
-    for airline, count in airline_counts.head(10).items():
-        print(f"  {airline}: {count:,} records")
-    
-    # Market distribution
-    print(f"\n🗺️ Top markets:")
-    market_counts = df['market'].value_counts()
-    for market, count in market_counts.head(10).items():
-        print(f"  {market}: {count:,} records")
-    
-    # Fare family distribution
-    print(f"\n🏷️ Fare families overview:")
-    ff_counts = df['primary_fare_family'].value_counts()
-    for ff, count in ff_counts.head(15).items():
-        print(f"  {ff}: {count:,} records")
-    
-    # Price statistics
-    print(f"\n💰 Price statistics:")
-    print(f"  Mean price: ${df['price_inc'].mean():.2f}")
-    print(f"  Median price: ${df['price_inc'].median():.2f}")
-    print(f"  Price range: ${df['price_inc'].min():.2f} - ${df['price_inc'].max():.2f}")
-    
-    # Advance purchase statistics
-    print(f"\n📅 Advance purchase statistics:")
-    ap_counts = df['advance_purchase_bucket'].value_counts()
-    for bucket, count in ap_counts.items():
-        pct = (count / len(df)) * 100
-        print(f"  {bucket}: {count:,} records ({pct:.1f}%)")
-    
-    return df
-
-def analyze_fare_brands_by_airline(df):
-    """
-    Analyze fare brands for each airline and market combination
-    
-    Args:
-        df (pd.DataFrame): Cleaned flight data
-        
-    Returns:
-        pd.DataFrame: Brand analysis by airline and market
-    """
-    print("\n" + "="*50)
-    print("FARE BRAND ANALYSIS BY AIRLINE")
-    print("="*50)
-    
-    if df.empty:
-        print("❌ No data for brand analysis")
-        return pd.DataFrame()
-    
-    # Group by airline and market to find all brands
-    brand_analysis = df.groupby(['carrier', 'market']).agg({
-        'primary_fare_family': lambda x: sorted(list(set(x))),
-        'price_inc': ['count', 'mean', 'min', 'max'],
-        'days_to_departure': ['mean', 'min', 'max']
-    }).reset_index()
-    
-    # Flatten column names
-    brand_analysis.columns = ['carrier', 'market', 'all_brands', 'record_count', 
-                             'avg_price', 'min_price', 'max_price', 
-                             'avg_days_out', 'min_days_out', 'max_days_out']
-    
-    brand_analysis['num_brands'] = brand_analysis['all_brands'].apply(len)
-    brand_analysis['brand_count_str'] = brand_analysis['all_brands'].apply(lambda x: ', '.join(x))
-    
-    print(f"\n📊 Brand diversity by airline:")
-    airline_brand_summary = brand_analysis.groupby('carrier').agg({
-        'num_brands': ['mean', 'min', 'max'],
-        'market': 'count'
-    }).round(2)
-    
-    airline_brand_summary.columns = ['avg_brands_per_market', 'min_brands', 'max_brands', 'markets_served']
-    print(airline_brand_summary.sort_values('avg_brands_per_market', ascending=False))
-    
-    return brand_analysis
-
-def identify_basic_economy_candidates(df, brand_analysis):
-    """
-    Identify Basic Economy candidates using multiple criteria
-    
-    Args:
-        df (pd.DataFrame): Cleaned flight data
-        brand_analysis (pd.DataFrame): Brand analysis by airline and market
-        
-    Returns:
-        tuple: (basic_economy_candidates, brand_metrics)
-    """
-    print("\n" + "="*50)
-    print("BASIC ECONOMY IDENTIFICATION")
-    print("="*50)
-    
-    if df.empty or brand_analysis.empty:
-        print("❌ No data for Basic Economy identification")
-        return pd.DataFrame(), pd.DataFrame()
-    
-    # Create comprehensive analysis for each airline-market-brand combination
-    brand_metrics = df.groupby(['carrier', 'market', 'primary_fare_family']).agg({
-        'price_inc': ['count', 'mean', 'min', 'max', 'std'],
-        'refundable': 'mean',
-        'change_fee': ['mean', 'max'],
-        'days_to_departure': 'mean',
-        'outbound_booking_class': lambda x: len(set(x))  # number of booking classes
-    }).reset_index()
-    
-    # Flatten column names
-    brand_metrics.columns = ['carrier', 'market', 'fare_family', 'record_count', 
-                           'avg_price', 'min_price', 'max_price', 'price_std',
-                           'refundable_pct', 'avg_change_fee', 'max_change_fee',
-                           'avg_days_out', 'booking_class_variety']
-    
-    # Calculate price rank within each airline-market combination
-    brand_metrics['price_rank'] = brand_metrics.groupby(['carrier', 'market'])['avg_price'].rank(method='min')
-    
-    # Basic Economy scoring criteria
-    def calculate_basic_economy_score(row):
-        score = 0
-        
-        # Price criteria (40% weight)
-        if row['price_rank'] == 1:  # Cheapest average price
-            score += 40
-        elif row['price_rank'] == 2:
-            score += 30
-        elif row['price_rank'] <= 3:
-            score += 20
-        
-        # Refundability (20% weight)
-        if pd.notna(row['refundable_pct']):
-            if row['refundable_pct'] < 0.1:  # Less than 10% refundable
-                score += 20
-            elif row['refundable_pct'] < 0.3:
-                score += 10
-        
-        # Change fee criteria (20% weight)
-        if pd.notna(row['avg_change_fee']):
-            if row['avg_change_fee'] > 100:  # High change fees
-                score += 20
-            elif row['avg_change_fee'] > 50:
-                score += 10
-        
-        # Brand name analysis (20% weight)
-        fare_family_lower = str(row['fare_family']).lower()
-        basic_keywords = ['basic', 'economy', 'main', 'standard', 'saver', 'light', 'essential']
-        premium_keywords = ['first', 'business', 'premium', 'plus', 'comfort', 'extra', 'flex']
-        
-        if any(keyword in fare_family_lower for keyword in basic_keywords):
-            score += 15
-        if any(keyword in fare_family_lower for keyword in premium_keywords):
-            score -= 15
-        
-        return score
-    
-    # Apply scoring function
-    brand_metrics['basic_economy_score'] = brand_metrics.apply(calculate_basic_economy_score, axis=1)
-    
-    # Identify Basic Economy for each airline-market combination
-    basic_economy_candidates = brand_metrics.loc[
-        brand_metrics.groupby(['carrier', 'market'])['basic_economy_score'].idxmax()
-    ].copy()
-    
-    # Add confidence level
-    def assign_confidence(score):
-        if score >= 70:
-            return 'High'
-        elif score >= 50:
-            return 'Medium'
-        else:
-            return 'Low'
-    
-    basic_economy_candidates['confidence'] = basic_economy_candidates['basic_economy_score'].apply(assign_confidence)
-    
-    print(f"\n🎯 Basic Economy Identification Results:")
-    print(f"Total airline-market combinations analyzed: {len(basic_economy_candidates):,}")
-    
-    confidence_dist = basic_economy_candidates['confidence'].value_counts()
-    for conf, count in confidence_dist.items():
-        print(f"  {conf} confidence: {count:,} combinations")
-    
-    # Show examples by airline
-    print(f"\n✈️ Basic Economy candidates by airline:")
-    for carrier in basic_economy_candidates['carrier'].unique()[:8]:
-        carrier_data = basic_economy_candidates[basic_economy_candidates['carrier'] == carrier]
-        high_conf = carrier_data[carrier_data['confidence'] == 'High']
-        if len(high_conf) > 0:
-            most_common_brand = high_conf['fare_family'].mode()
-            if len(most_common_brand) > 0:
-                print(f"  {carrier}: {most_common_brand[0]} (in {len(high_conf)} markets)")
-    
-    return basic_economy_candidates, brand_metrics
-
 def create_deliverable_table(basic_economy_candidates, brand_analysis):
     """
     Create the final deliverable table
     
     Args:
         basic_economy_candidates (pd.DataFrame): Basic Economy identification results
-        brand_analysis (pd.DataFrame): Brand analysis by airline and market
+        brand_analysis (pd.DataFrame): Brand analysis results
         
     Returns:
         pd.DataFrame: Final deliverable table
     """
-    print("\n" + "="*50)
+    print("\n" + "="*60)
     print("CREATING DELIVERABLE TABLE")
-    print("="*50)
+    print("="*60)
     
     if basic_economy_candidates.empty or brand_analysis.empty:
         print("❌ No data for deliverable table")
@@ -642,12 +647,24 @@ def create_deliverable_table(basic_economy_candidates, brand_analysis):
 
 def main():
     """
-    Main execution function that orchestrates the entire analysis pipeline
+    Main execution function for the fare brand analysis pipeline
     
     Returns:
         tuple: (df_analyzed, deliverable_final, basic_economy_candidates, ap_analysis)
     """
-    print("🚀 Starting Enhanced Fare Brand Analysis and Basic Economy Detection...")
+    print("=" * 80)
+    print("ENHANCED FARE BRAND ANALYSIS AND BASIC ECONOMY DETECTION")
+    print("=" * 80)
+    
+    # Setting up account info on redshift for connection
+    try:
+        acct_no, acct_name = rs.RedshiftAccess.get_rs_account_info()
+        print(f"Account Number: {acct_no}")
+        print(f"Account Name: {acct_name}")
+    except Exception as e:
+        print(f"Warning: Could not retrieve account info: {e}")
+    
+    print("\n🚀 Starting Enhanced Fare Brand Analysis and Basic Economy Detection...")
     
     try:
         # Step 1: Fetch data
@@ -665,7 +682,7 @@ def main():
             return None, None, None, None
         
         # Step 3: Exploratory Data Analysis
-        df_analyzed = exploratory_data_analysis(df_clean)
+        df_analyzed = perform_exploratory_data_analysis(df_clean)
         
         # Step 4: Analyze advance purchase patterns
         ap_analysis = analyze_advance_purchase_patterns(df_analyzed)
