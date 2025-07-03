@@ -536,7 +536,7 @@ def create_visualizations(df, ap_analysis, basic_economy_candidates):
     plt.tight_layout()
     
     # Save the visualization
-    viz_filename = f"fare_brand_analysis_visualizations_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+    viz_filename = f"output/fare_brand_analysis_visualizations_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
     plt.savefig(viz_filename, dpi=300, bbox_inches='tight')
     print(f"💾 Saved visualizations to: {viz_filename}")
     
@@ -596,7 +596,7 @@ def create_summary_statistics_visualization(df, ap_analysis, basic_economy_candi
     plt.tight_layout()
     
     # Save the summary visualization
-    summary_viz_filename = f"summary_statistics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+    summary_viz_filename = f"output/summary_statistics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
     plt.savefig(summary_viz_filename, dpi=300, bbox_inches='tight')
     print(f"💾 Saved summary statistics to: {summary_viz_filename}")
 
@@ -639,7 +639,7 @@ def create_deliverable_table(basic_economy_candidates, brand_analysis):
     print(deliverable_final.head(10).to_string(index=False))
     
     # Save to CSV
-    output_filename = f"basic_economy_analysis_enhanced_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    output_filename = f"output/basic_economy_analysis_enhanced_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     deliverable_final.to_csv(output_filename, index=False)
     print(f"\n💾 Saved deliverable table to: {output_filename}")
     
